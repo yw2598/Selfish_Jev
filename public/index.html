@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>自私的基因 · 生存训练</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/styles.css"></head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-icon">▦</span><div><strong>自私的基因</strong><small>THE SELFISH GENE</small></div></div>
+    <div class="experiment"><span class="dot"></span><span id="experimentName">四种目标 · 同一世界</span><span class="pill" id="rulesVersion">RULEBOOK 0.7</span></div>
+    <div class="top-actions"><button id="healthBtn" class="connection"><span class="status-dot"></span><span id="connectionLabel">检测 Kev…</span></button><button id="settingsBtn">参数配置 <span>↗</span></button><button id="reportBtn" title="下载实验报告">导出报告 ↓</button></div>
+  </header>
+  <main>
+    <section class="intro"><div><div class="eyebrow">THE SELFISH GENE / SURVIVAL LAB</div><h1>自私的基因</h1><p>开源Jev的强化学习生存训练</p></div><div class="experiment-note"><span class="tiny-square"></span>远端基础 Kev + Prompt<span>尚未进行沙盘微调</span></div></section>
+    <nav class="workspace-tabs" role="tablist" aria-label="工作区"><button id="sandboxTab" class="active" role="tab" aria-controls="sandboxPanel" aria-selected="true">沙盘实验</button><button id="replayTab" role="tab" aria-controls="replayPanel" aria-selected="false">回放演示 <span>REPLAY STUDIO</span></button></nav>
+    <section id="sandboxPanel" role="tabpanel" aria-labelledby="sandboxTab">
+    <section class="metrics" aria-label="实验统计">
+      <div><span>世界回合</span><strong id="turnStat">0000</strong><small>/ <span id="maxTurnStat">2000</span></small></div>
+      <div><span>存活个体</span><strong id="populationStat">20</strong><small id="populationLimitStat">/ 100 上限</small></div>
+      <div><span>世界总能量</span><strong id="energyStat">—</strong><small>E</small></div>
+      <div><span>守恒误差</span><strong id="conservationStat">—</strong><small id="conservationLabel">等待首次结算</small></div>
+      <div class="spark-metric"><span>群体存活曲线</span><canvas id="sparkline" aria-label="四种族人口曲线"></canvas></div>
+    </section>
+    <div class="workspace">
+      <aside class="left-panel panel">
+        <div class="panel-title"><h2>实验控制</h2><span class="muted">01</span></div>
+        <label class="field-label" for="runTurns">连续运行回合数</label><div class="run-input"><input id="runTurns" type="number" min="1" max="2000" value="10"><span>回合</span></div>
+        <button class="primary" id="runBtn">▶ 开始模拟</button><div class="button-pair"><button id="stepBtn">单步 +1</button><button id="pauseBtn" disabled>Ⅱ 暂停</button></div>
+        <div class="run-status"><span id="runStatus">已暂停 · 可以编辑地图</span><div class="progress-track"><div id="progressFill"></div></div><small id="runDetail">所有个体完成决策后统一结算</small></div>
+        <hr>
+        <div class="panel-title"><h2>地图编辑</h2><span class="muted" id="editBadge">可编辑</span></div>
+        <p class="hint">选择画笔并拖动绘制。滚轮缩放，右键拖动平移。</p>
+        <div class="tools" id="tools">
+          <button data-tool="select" class="active" title="选择个体或格子">↖<span>选择</span></button>
+          <button data-tool="resource" title="添加或重置资源点">✦<span>资源</span></button>
+          <button data-tool="territory" title="涂绘地块归属">▧<span>领地</span></button>
+          <button data-tool="erase" title="删除资源和建筑">◇<span>擦除</span></button>
+          <button data-tool="WALL">▥<span>城墙</span></button>
+          <button data-tool="GATE">Π<span>城门</span></button>
+          <button data-tool="FORT">⌂<span>堡垒</span></button>
+        </div>
+        <label class="field-label" for="brushTribe">领地 / 建筑归属</label><select id="brushTribe"><option value="A">A · 个人生存</option><option value="B">B · 自利为主</option><option value="C">C · 群体为主</option><option value="D">D · 群体生存</option><option value="">中立地块</option></select>
+        <label class="field-label" for="brushSize">画笔大小 <span id="brushSizeLabel">1 × 1</span></label><input id="brushSize" type="range" min="1" max="7" step="2" value="1">
+        <div class="button-pair file-actions"><button id="exportMapBtn">导出地图</button><button id="importMapBtn">导入地图</button><input id="mapFile" type="file" accept="application/json,.json" hidden></div>
+        <div class="scenario-note" id="interventionNote">随机资源 · 四角出生<br>编辑操作会保存在实验记录中。</div>
+        <hr><button class="text-button" id="newBtn">＋ 按配置新建实验</button>
+        <div class="service-foot"><span id="modelName">Kev · 未检测</span><small id="languageMode">语言服务：模板回退</small><small id="requestCount">0 次模型请求</small></div>
+      </aside>
+      <section class="map-panel panel">
+        <div class="map-toolbar"><div class="segmented"><button id="globalView" class="active">全知地图</button><button id="agentView">个体视野</button></div><div class="map-meta"><span id="mapSize">32 × 32</span><button id="fitBtn" title="适应画布">⊡</button><button id="zoomOutBtn" title="缩小">−</button><span id="zoomLabel">100%</span><button id="zoomInBtn" title="放大">＋</button></div></div>
+        <div class="map-wrap" id="mapWrap"><canvas id="mapCanvas" aria-label="可编辑的能量世界地图" tabindex="0"></canvas><div class="map-caption"><span class="live-dot"></span><span id="mapCaption">WORLD OVERVIEW</span></div><div class="coordinates" id="coordinates">X — / Y —</div><div class="map-empty" id="viewHint" hidden>先点击一个个体，查看它实际收到的观察。</div><div class="corner-nav"><button data-camp="A">↖ A</button><button data-camp="B">B ↗</button><button data-camp="D">↙ D</button><button data-camp="C">C ↘</button></div></div>
+        <div class="map-footer"><div><span class="legend-resource">✦</span>资源<span class="legend-agent">●</span>个体<span>◆</span>统治者</div><span id="tileInfo">点击个体查看决策 · 滚轮缩放</span></div>
+        <div class="world-note"><span>↳</span><p id="worldNote">世界地图仅供你观察。普通成员只能看到自身周围 5 × 5 格；统治者额外看到本族领地向外 3 格。</p></div>
+      </section>
+      <aside class="right-panel panel">
+        <div class="panel-title"><h2>四大阵营</h2><span class="muted">02</span></div>
+        <div class="tribes" id="tribeCards"></div>
+        <div class="inspector-head"><h2>个体观察</h2><span id="selectedId" class="muted">未选择</span></div>
+        <div id="inspector"><div class="inspector-empty"><span>◎</span><p>每个个体，都是一个独立的视角。</p><small>点击地图上的个体<br>检查能量、技能、观察和决策概率。</small></div></div>
+        <details class="event-details"><summary>本回合事件 <span id="eventCount">0</span></summary><div id="events" class="event-list"></div></details>
+      </aside>
+    </div>
+    </section>
+    <section id="replayPanel" class="replay-panel" role="tabpanel" aria-labelledby="replayTab" hidden>
+      <div class="replay-heading"><div><span class="eyebrow">REPLAY STUDIO / DIRECTOR'S CUT</span><h2>把生存史，剪成一部短片。</h2><p>真实轨迹 · 重大事件 · 合成音效</p></div><div class="segmented" role="tablist" aria-label="回放子菜单"><button id="showReplayEditor" class="active" role="tab" aria-selected="true" aria-controls="replay-editor">回放剪辑</button><button id="showReplayMovie" role="tab" aria-selected="false" aria-controls="replay-movie">成片演示</button></div></div>
+      <div id="replayStatus" class="replay-status" role="status" aria-live="polite">选择一份历史记录开始。</div>
+      <div id="replay-editor" role="tabpanel" aria-labelledby="showReplayEditor">
+        <div class="replay-source"><label for="replayEpisode">实验记录</label><select id="replayEpisode" class="replay-edit"></select><button id="refreshReplaysBtn" class="replay-edit">刷新列表</button><button id="loadReplayBtn" class="primary replay-edit">载入回放</button><button id="loadExampleReplay" class="replay-edit">100回合示例</button></div>
+        <div class="replay-layout"><div class="replay-main">
+          <div id="replayEmpty" class="replay-empty"><span>▷</span><h3>每一场生存，都有值得回看的时刻。</h3><p>载入记录后，拖动时间轴查看世界的变化。</p></div>
+          <div id="replayStage" hidden><canvas id="replayCanvas" width="1280" height="720" aria-label="历史回放与视频画面"></canvas>
+            <div class="replay-transport"><button id="replayPlayBtn" class="needs-replay" disabled>▶ 播放</button><strong id="replayTurn">T0</strong><label>速度 <select id="replaySpeed" class="replay-edit"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label><label class="sound-toggle"><input id="replaySound" class="replay-edit" type="checkbox" checked>音效</label><span id="replayClock">0 / 0 s</span></div>
+            <div class="replay-timeline"><label for="replaySeek" class="field-label">逐回合浏览 · 点击事件标记跳转</label><input id="replaySeek" class="replay-edit needs-replay" type="range" min="0" max="100" step="1" value="0" disabled><div id="replayMarkers" class="replay-markers"></div></div>
+          </div>
+          <div class="replay-cut panel"><div class="panel-title"><h3>剪辑列表</h3><span id="replayDuration">尚未载入</span></div><div class="cut-toolbar"><button id="fullReplayBtn" class="replay-edit needs-replay" disabled>使用全程</button><button id="highlightReplayBtn" class="replay-edit needs-replay" disabled>✦ 一键高光</button><button id="clearReplayClips" class="replay-edit needs-replay" disabled>清空列表</button></div>
+            <div class="clip-inputs"><label>开始回合<input id="clipStart" class="replay-edit needs-replay" type="number" min="0" value="0" disabled></label><label>结束回合<input id="clipEnd" class="replay-edit needs-replay" type="number" min="0" value="100" disabled></label><button id="addReplayClip" class="replay-edit needs-replay" disabled>＋ 加入片段</button></div><div id="clipList" class="clip-list"></div>
+            <div class="export-bar"><p>720p · 带事件字幕与音效 · WebM 视频<br><small>成片含短片头片尾，导出期间保持此页可见。</small></p><button id="exportReplayBtn" class="primary" disabled>导出视频 ↓</button><button id="cancelExportBtn" hidden>取消导出</button></div><progress id="exportProgress" max="100" value="0" hidden></progress>
+          </div>
+        </div><aside class="replay-events-panel panel"><div class="panel-title"><h3>重大事件</h3><span id="replayEventCount">0 条</span></div><select id="replayEventFilter" class="replay-edit" aria-label="筛选事件"><option value="">全部事件</option><option value="capture">夺取敌矿</option><option value="extinction">种族灭绝</option><option value="mine">发现矿点</option><option value="succession">国王更替</option><option value="battle">首次交战</option><option value="population">人口里程碑</option><option value="economy">经济危机</option><option value="edit">人工调整</option><option value="fault">服务故障</option></select><div id="replayEvents"></div></aside></div>
+      </div>
+      <div id="replay-movie" role="tabpanel" aria-labelledby="showReplayMovie" hidden><div id="movieEmpty" class="replay-empty"><span>▶</span><h3>你的演示影片</h3><p>在剪辑页导出视频，或载入已经制作的示例成片。</p></div><video id="replayVideo" controls playsinline preload="metadata" hidden aria-label="回放成片播放器"></video><div class="movie-footer"><p id="movieMeta">已完成的100回合实验可作为示例演示。</p><div><button id="loadDemoMovie">载入示例成片</button><a id="downloadReplayVideo" class="button-link" hidden>下载成片 ↓</a></div></div></div>
+    </section>
+    <footer><span>自私的基因 <b>/</b> 目标条件模拟，结果不代表训练后的策略表现。</span><span id="timing">SEED 20260927</span></footer>
+  </main>
+  <dialog id="servicesDialog"><form method="dialog" class="dialog-heading"><div><span class="eyebrow">JEV / LANGUAGE SERVICES</span><h2>连接你的智能体</h2></div><button aria-label="关闭服务设置">✕</button></form>
+    <p class="hint">四队可共用当前 Jev 服务，也可分别连接自己的服务。国王、普通单位与升级决策都使用所属队伍的端点。保存前请暂停模拟并等待当前回合结束。</p>
+    <div id="teamServiceFields" class="service-grid"></div>
+    <section class="service-card language-service"><h3>共享 LLM · 通信与族群记忆</h3><p class="hint">OpenAI 兼容接口，填写基础地址（例如 https://openrouter.ai/api/v1），不含 /chat/completions。留空关闭 LLM。</p>
+      <label>LLM 端点<input id="languageEndpoint" type="url" placeholder="https://openrouter.ai/api/v1" autocomplete="off"></label>
+      <label>模型名称<input id="languageModel" placeholder="qwen/qwen3.8-flash" autocomplete="off"></label>
+      <label>API 密钥<input id="languageKey" type="password" autocomplete="new-password" placeholder="留空保留已保存密钥"></label><label class="service-check"><input id="languageClearKey" type="checkbox">清除该端点的密钥</label><small id="languageKeyStatus"></small>
+    </section>
+    <p class="hint">密钥仅存服务端，不写入实验报告或回放。Jev 端点须提供 /v1/models 和 /v1/systemone；输入服务基础地址即可。</p>
+    <div id="serviceMessage" class="replay-status" role="status" aria-live="polite"></div><div id="serviceHealth" class="service-health"></div>
+    <div class="dialog-actions"><button id="defaultServicesBtn">填入当前默认服务</button><div><button id="testJevServicesBtn">检测已保存 Jev</button><button id="testLanguageServiceBtn">检测已保存 LLM</button><button id="saveServicesBtn" class="primary">保存服务设置</button></div></div>
+  </dialog>
+  <dialog id="settingsDialog"><form method="dialog" class="dialog-heading"><div><span class="eyebrow">EXPERIMENT PARAMETERS</span><h2>调整这个世界</h2></div><button aria-label="关闭">✕</button></form><p class="hint">能量单位为 E。修改成本、产出、目标权重后可在暂停状态应用；初始人口和地图尺寸需新建实验。</p><div class="quick-config" id="quickConfig"></div><details><summary>完整配置 JSON</summary><textarea id="configEditor" spellcheck="false" aria-label="完整配置JSON"></textarea></details><div class="dialog-error" id="configError"></div><div class="dialog-actions"><button id="defaultConfigBtn">恢复默认表单</button><div><button id="applyConfigBtn">应用到当前实验</button><button class="primary" id="resetConfigBtn">按配置新建实验</button></div></div></dialog>
+  <dialog id="promptDialog"><form method="dialog" class="dialog-heading"><div><span class="eyebrow">PRIVATE OBSERVATION</span><h2 id="promptTitle">决策输入</h2></div><button aria-label="关闭">✕</button></form><div class="prompt-tabs"><button id="showObservationBtn" class="active">实际观察</button><button id="showRulesBtn">角色 Prompt</button><button id="showTraceBtn">概率与路径</button></div><pre id="promptContent"></pre></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+  <script type="module" src="/replay-studio.js"></script>
+  <script type="module" src="/service-settings.js"></script>
+</body></html>

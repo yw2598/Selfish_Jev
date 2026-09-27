@@ -1,0 +1,30 @@
+import {chromium} from '@playwright/test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {World} from '../lib/world.mjs';
+import {settle} from '../lib/settle.mjs';
+const root=fileURLToPath(new URL('../',import.meta.url)),base='http://127.0.0.1:8768';
+const server=spawn(process.execPath,['server.mjs'],{cwd:root,windowsHide:true,stdio:'ignore',env:{...process.env,PORT:'8768',ARTIFACTS_DIR:fileURLToPath(new URL('../artifacts/movement-browser/',import.meta.url))}});
+let browser;
+try{
+  let baseline;for(let i=0;i<50;i++){try{baseline=await fetch(`${base}/api/state`).then(r=>r.json());break;}catch{await new Promise(r=>setTimeout(r,100));}}assert.ok(baseline);
+  const defaults=JSON.parse(await readFile(new URL('../defaults.json',import.meta.url),'utf8'));
+  const w=new World({...defaults,population:1,resourceCount:0,startingMinePerTribe:false,subsistencePayment:0});
+  const a=w.alive()[0];a.p=w.index(10,10);w.buildings[w.index(11,10)]={tribe:'B',type:'WALL',energy:3000,complete:true};
+  const status={...baseline.status,episode:'movement-fixture',running:false,busy:false,error:null,modelStatus:'connected'};
+  let published={...w.exportState(),status};browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1512,height:1100}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/api/state',route=>route.fulfill({json:published}));await page.route('**/api/health',route=>route.fulfill({json:{ok:true}}));
+  await page.route('**/api/agent?*',route=>route.fulfill({json:{observation:w.lastObservations[a.id]||w.observation(a),decision:null,nationalDecision:null}}));
+  await page.goto(base);await page.waitForSelector('.tribe-card');assert.match(await page.title(),/自私的基因/);assert.equal(await page.locator('.intro p').textContent(),'开源Jev的强化学习生存训练');
+  assert.equal(new Set(await page.locator('.tribe-badge svg').evaluateAll(nodes=>nodes.map(n=>n.innerHTML))).size,4);
+  assert.deepEqual(await page.locator('.faction-title strong').allTextContents(),['混沌战帮','阿美瑞卡','神圣泰拉','蜂巢意志']);
+  w.prepare();for(const unit of w.alive())w.lastObservations[unit.id]=w.observation(unit);settle(w,Object.fromEntries(w.alive().map(unit=>[unit.id,{action:unit===a?{type:'MOVE',p:w.index(11,11)}:{type:'WAIT'}}])));
+  published={...w.exportState(),status};assert.deepEqual(published.movementEvents[0].path,[[10,10],[10,11],[11,11]]);
+  await page.waitForFunction(()=>Number(document.getElementById('mapCanvas').dataset.movingAgents)>0);await page.screenshot({path:'artifacts/movement-v07.png',fullPage:true});
+  await page.locator('[data-camp=A]').click();await page.locator('#agentView').click();await page.waitForFunction(()=>document.getElementById('mapCanvas').dataset.movingAgents==='0');
+  await page.locator('#globalView').click();await page.waitForTimeout(1600);assert.equal(await page.locator('#mapCanvas').getAttribute('data-moving-agents'),'0');
+  published={...published,turn:0,status:{...status,episode:'reset-fixture'}};await page.waitForFunction(()=>document.getElementById('turnStat').textContent==='0000');assert.equal(await page.locator('#mapCanvas').getAttribute('data-moving-agents'),'0');
+  assert.deepEqual(errors,[]);console.log('PASS: branding, four distinct emblems, settled bent movement, frozen private view, no repeated animation and reset.');
+}finally{await browser?.close();server.kill();}

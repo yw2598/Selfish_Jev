@@ -1,0 +1,3 @@
+{
+  "8108": {"host":"your-jev-host","sshPort":22,"user":"your-user","remotePort":8100}
+}

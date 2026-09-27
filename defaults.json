@@ -1,0 +1,129 @@
+{
+  "rulesVersion": "0.7",
+  "decisionMode": "hybrid",
+  "seed": 20260927,
+  "width": 24,
+  "height": 24,
+  "terrainMode": "decorative",
+  "neutralMineLayout": "vision5",
+  "explorationTendency": "moderate",
+  "memoryCompression": "tribe-shared",
+  "population": 5,
+  "maxPopulation": 100,
+  "maxPopulationPerTribe": 50,
+  "rotation": 0,
+  "maxTurns": 2000,
+  "initialEnergy": 10,
+  "capacity": 100,
+  "publicEnergy": 30,
+  "subsistencePayment": 1,
+  "nationalPolicyEnabled": true,
+  "survivalCost": 1,
+  "resourceCount": 12,
+  "resourceDensity": 0.5,
+  "startingMinePerTribe": true,
+  "miningMode": "automatic",
+  "discoveryReward": 10,
+  "enemyMineReward": 10,
+  "killLootEnabled": true,
+  "claimFunding": "public",
+  "movementRange": 3,
+  "attackRange": 3,
+  "resourceProduction": 10,
+  "resourceCapacity": 100,
+  "resourceStock": 50,
+  "costs": {
+    "MOVE": 1,
+    "ATTACK": 4,
+    "HARVEST": 3,
+    "CLAIM": 5,
+    "TRANSFER": 1,
+    "COMMUNICATE": 2,
+    "BUILD": 3,
+    "REPRODUCE": 5,
+    "TREASURY": 1
+  },
+  "harvestLimit": 12,
+  "buildLimit": 10,
+  "attackDamage": 10,
+  "birthInvestments": [
+    10,
+    20
+  ],
+  "reproductionMode": "individual",
+  "buildings": {
+    "WALL": 30,
+    "GATE": 40,
+    "FORT": 120
+  },
+  "fortDefense": 0.2,
+  "maxDefense": 0.5,
+  "upgradeEvery": 10,
+  "skillSlots": 3,
+  "skillMaxLevel": 3,
+  "rulerPadding": 3,
+  "selfWeights": {
+    "A": 1,
+    "B": 0.67,
+    "C": 0.33,
+    "D": 0
+  },
+  "reward": {
+    "deathPenalty": 10,
+    "demographyWeight": 5,
+    "energyWeight": 0.05
+  },
+  "communicationTTL": 5,
+  "memoryTTL": 20,
+  "compression": {
+    "recent": 4,
+    "period": 5,
+    "maxRequestChars": 8000,
+    "maxItemChars": 200,
+    "communication": {
+      "count": 16,
+      "chars": 2400,
+      "items": 8,
+      "budget": 1200
+    },
+    "memory": {
+      "count": 8,
+      "chars": 1600,
+      "items": 4,
+      "budget": 800
+    }
+  },
+  "kev": {
+    "endpoint": "http://127.0.0.1:8108",
+    "model": "kev-latest",
+    "concurrency": 8,
+    "timeoutMs": 90000,
+    "teams": {
+      "A": {
+        "endpoint": "",
+        "model": ""
+      },
+      "B": {
+        "endpoint": "",
+        "model": ""
+      },
+      "C": {
+        "endpoint": "",
+        "model": ""
+      },
+      "D": {
+        "endpoint": "",
+        "model": ""
+      }
+    }
+  },
+  "language": {
+    "endpoint": "https://openrouter.ai/api/v1",
+    "model": "qwen/qwen3.8-flash",
+    "concurrency": 4,
+    "timeoutMs": 30000
+  },
+  "territoryTax": 0.1,
+  "claimReward": 1,
+  "contiguousExpansion": true
+}
