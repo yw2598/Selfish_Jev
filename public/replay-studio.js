@@ -2,9 +2,10 @@ import {finalizeWebM} from './webm-duration.js';
 import {renderReplay} from './replay-renderer.js';
 import {ReplayAudio} from './replay-audio.js';
 import {normalizeClips,highlights,timeline,locate} from './replay-timeline.js';
+import {replayReport} from './replay-report.js';
 const $=id=>document.getElementById(id),canvas=$('replayCanvas'),audio=new ReplayAudio();
 let replay=null,clips=[],tl={entries:[],duration:0},time=0,playing=false,recording=false,previousTime=0,lastCue='',raf=null,recorder=null,cancelled=false,previewUrl=null,loadToken=0,catalogLoaded=false,scrubFrame=null;
-const kinds={capture:'夺取敌矿',mine:'发现矿点',extinction:'种族灭绝',succession:'国王更替',battle:'首次交战',population:'人口里程碑',economy:'经济危机',edit:'人工调整',fault:'服务故障'};
+const kinds={capture:'夺取敌矿',mine:'发现矿点',extinction:'种族灭绝',succession:'国王更替',battle:'首次交战',combat:'交战记录',casualty:'伤亡',birth:'繁殖',cooperation:'个体援助',policy:'国家倾向',population:'人口里程碑',economy:'经济变化',edit:'人工调整',fault:'服务故障'};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 async function api(url,data){const r=await fetch(url,data?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}:{});const value=await r.json();if(!r.ok)throw Error(value.error||`HTTP ${r.status}`);return value;}
 function message(text,error=false){$('replayStatus').textContent=text;$('replayStatus').classList.toggle('error',error);}
@@ -13,7 +14,9 @@ function rebuild(){if(!replay)return;scrubFrame=null;clips=normalizeClips(clips,
   $('clipList').innerHTML=clips.map((c,i)=>`<div class="clip-item"><span>${String(i+1).padStart(2,'0')} · T${c.start}—T${c.end}</span><div><button class="replay-edit" data-up="${i}" aria-label="上移片段 ${i+1}" ${i===0?'disabled':''}>↑</button><button class="replay-edit" data-remove="${i}" aria-label="删除片段 ${i+1}">×</button></div></div>`).join('');
   $('exportReplayBtn').disabled=!clips.length;$('replayPlayBtn').disabled=!clips.length;draw();
 }
-function draw(){if(!replay)return;const entry=locate(tl,time)||{turn:0,clip:0,progress:1},frame=replay.frames[scrubFrame??entry.turn];renderReplay(canvas,replay,frame,scrubFrame===null?entry.progress:1,{clip:entry.clip,clips:clips.length,elapsed:time,duration:tl.duration});$('replaySeek').value=frame.turn;$('replayTurn').textContent=`T${frame.turn} / ${replay.frames.at(-1).turn}`;$('replayClock').textContent=`${time.toFixed(1)} / ${tl.duration.toFixed(1)} s`;if(recording)$('exportProgress').value=100*time/tl.duration;}
+let detailFrame=null;
+function draw(){if(!replay)return;const entry=locate(tl,time)||{turn:0,clip:0,progress:1},frame=replay.frames[scrubFrame??entry.turn];renderReplay(canvas,replay,frame,scrubFrame===null?entry.progress:1,{clip:entry.clip,clips:clips.length,elapsed:time,duration:tl.duration});$('replaySeek').value=frame.turn;$('replayTurn').textContent=`T${frame.turn} / ${replay.frames.at(-1).turn}`;$('replayClock').textContent=`${time.toFixed(1)} / ${tl.duration.toFixed(1)} s`;if(detailFrame!==frame){detailFrame=frame;roundDetails(frame);}if(recording)$('exportProgress').value=100*time/tl.duration;}
+function roundDetails(frame){const s=frame.summary;$('replayRoundDetails').innerHTML=`<h3>T${frame.turn} · 本回合详情</h3><p>${s?`出生 ${s.births} · 死亡 ${s.deaths} · 攻击 ${s.attacks} · 占地 ${s.claims} · 个体援助 ${s.gifts} · 通信 ${s.communications}`:'初始状态：四队各自从出生领地开始。'}</p>${s?`<div class="round-economy">${s.tribes.map(t=>`<div><b>${t.tribe} 队 · ${t.population} 人</b><span>矿点 ${t.mines} · 本轮矿产 ${t.mineIncome.toFixed(2)} E</span><span>公账 ${t.publicEnergy.toFixed(2)} E（${t.publicDelta>=0?'+':''}${t.publicDelta.toFixed(2)}）</span><span>生活费 ${t.welfare.toFixed(2)} / ${t.welfareDemand.toFixed(2)} E</span></div>`).join('')}</div>`:''}${frame.major.length?frame.major.map(e=>`<details class="round-event" ${e.score>=7?'open':''}><summary>${esc(e.title)}</summary><p>${esc(e.detail)}</p><ul>${(e.details||[]).filter(Boolean).map(d=>`<li>${esc(d)}</li>`).join('')}</ul></details>`).join(''):'<p class="hint">无新增大事件，可继续查看下一回合。</p>'}`;}
 function stop(silence=true){playing=false;if(silence)audio.stop();if(raf!==null)cancelAnimationFrame(raf);raf=null;$('replayPlayBtn').textContent='▶ 播放';}
 function tick(now){
   if(!playing)return;const dt=Math.max(0,(now-previousTime)/1000);previousTime=now;time=Math.min(tl.duration,time+dt);draw();
@@ -22,9 +25,10 @@ function tick(now){
 }
 async function play(){if(!replay||!tl.entries.length)return;scrubFrame=null;if(playing){stop();return;}await audio.ready();audio.enabled=$('replaySound').checked;if(time>=tl.duration-.01)time=0;lastCue='';playing=true;previousTime=performance.now();$('replayPlayBtn').textContent='Ⅱ 暂停';raf=requestAnimationFrame(tick);}
 function jump(turn){if(!replay||recording||!replay.frames[turn])return;stop();const e=tl.entries.find(e=>e.turn===turn);if(e)time=e.start;scrubFrame=turn;draw();}
-function events(){if(!replay)return;const filter=$('replayEventFilter').value,items=replay.majorEvents.filter(e=>!filter||e.kind===filter);$('replayEventCount').textContent=`${items.length} 条`;
+function events(){if(!replay)return;const filter=$('replayEventFilter').value,tribe=$('replayTribeFilter').value,query=$('replayEventSearch').value.trim().toLowerCase(),items=replay.majorEvents.filter(e=>(!filter||e.kind===filter)&&(!tribe||(e.relatedTribes||[e.tribe]).includes(tribe))&&(!query||[`T${e.turn}`,e.title,e.detail,...(e.details||[])].join(' ').toLowerCase().includes(query)));$('replayEventCount').textContent=`${items.length} / ${replay.majorEvents.length} 条`;
   $('replayEvents').innerHTML=items.map(e=>`<button class="replay-event replay-edit" data-event-turn="${e.turn}"><span class="event-turn">T${e.turn}</span><span><b>${esc(e.title)}</b><small>${esc(e.detail)}</small></span><i class="event-kind ${e.kind}">${kinds[e.kind]}</i></button>`).join('')||'<p class="hint">这段记录尚无此类重大事件。</p>';
-  $('replayMarkers').innerHTML=replay.majorEvents.map(e=>`<button class="replay-edit marker ${e.kind}" style="left:${100*e.turn/Math.max(1,replay.frames.at(-1).turn)}%" data-event-turn="${e.turn}" title="T${e.turn} ${esc(e.title)}" aria-label="跳转 T${e.turn} ${esc(e.title)}"></button>`).join('');
+  const grouped=new Map();for(const e of items){if(!grouped.has(e.turn))grouped.set(e.turn,[]);grouped.get(e.turn).push(e);}
+  $('replayMarkers').innerHTML=[...grouped].map(([turn,list])=>{const e=[...list].sort((a,b)=>b.score-a.score)[0];return `<button class="replay-edit marker ${e.kind}" style="left:${100*turn/Math.max(1,replay.frames.at(-1).turn)}%" data-event-turn="${turn}" title="T${turn} · ${list.length} 条事件 · ${esc(e.title)}" aria-label="跳转 T${turn}，${list.length} 条事件"></button>`;}).join('');
 }
 function setReplay(data){
   replay=data;clips=[{start:0,end:data.frames.at(-1).turn}];time=0;$('clipStart').max=$('clipEnd').max=$('replaySeek').max=data.frames.at(-1).turn;$('clipStart').value=0;$('clipEnd').value=data.frames.at(-1).turn;
@@ -65,6 +69,8 @@ async function loadExample(){if(recording)return;const token=++loadToken;stop();
 $('loadExampleReplay').onclick=loadExample;
 $('replaySeek').oninput=()=>jump(Number($('replaySeek').value));$('replaySpeed').onchange=()=>{stop();time=0;rebuild();};$('replaySound').onchange=()=>{audio.enabled=$('replaySound').checked;};
 $('replayEventFilter').onchange=events;
+$('replayTribeFilter').onchange=events;$('replayEventSearch').oninput=events;
+$('downloadReplayReport').onclick=()=>{if(!replay)return;const url=URL.createObjectURL(new Blob([replayReport(replay)],{type:'text/markdown;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=`selfish-gene-${replay.episode}-T${replay.verifiedTurns}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 for(const id of ['replayEvents','replayMarkers'])$(id).onclick=e=>{const b=e.target.closest('[data-event-turn]');if(b)jump(Number(b.dataset.eventTurn));};
 $('addReplayClip').onclick=()=>{if(!replay)return;const start=Number($('clipStart').value),end=Number($('clipEnd').value),last=replay.frames.at(-1).turn;if(!Number.isInteger(start)||!Number.isInteger(end)||start<0||end>last||end<start){message(`片段范围应在 0～${last} 回合内，结束不得早于开始。`,true);return;}stop();clips.push({start,end});time=0;rebuild();message('片段已加入剪辑列表，可删除或调整顺序。');};
 $('clearReplayClips').onclick=()=>{stop();clips=[];time=0;rebuild();};$('fullReplayBtn').onclick=()=>{if(!replay)return;stop();clips=[{start:0,end:replay.frames.at(-1).turn}];time=0;rebuild();};

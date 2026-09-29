@@ -1,16 +1,22 @@
 {
   "episode": "session-1790499647924",
-  "description": "已校验100回合 · 27个重大事件 · 高光剪辑 · 720p · 原创合成音效 · 29.3秒",
-  "bytes": 10573124,
+  "mode": "full",
+  "turnStart": 0,
+  "turnEnd": 100,
+  "frames": 101,
+  "events": 291,
+  "secondsPerTurn": 1,
+  "description": "完整前100回合 · 291条详细事件 · 逐回合无跳剪 · 720p · 原创合成音效 · 102.3秒",
+  "bytes": 39993240,
   "audio": {
-    "duration": 29.28,
+    "duration": 102.3,
     "channels": 2,
-    "peak": 0.09642131626605988
+    "peak": 0.09693056344985962
   },
   "video": {
     "width": 1280,
     "height": 720,
-    "duration": 29.292333
+    "duration": 102.308333
   },
-  "at": "2026-09-27T09:56:41.357Z"
+  "at": "2026-09-29T10:47:40.085Z"
 }

@@ -14,7 +14,7 @@ async function start(){server=spawn(process.execPath,['server.mjs'],{cwd:root,wi
 async function stop(){if(!server||server.exitCode!==null)return;const exited=new Promise(r=>server.once('exit',r));server.kill();await exited;}
 try{
   await start();browser=await chromium.launch({channel:process.env.BROWSER_CHANNEL||'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1050}}),errors=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(base+'/#replay');await page.waitForFunction(()=>document.getElementById('replaySeek').max==='100'&&!document.getElementById('replayStage').hidden);assert.equal(await page.locator('.replay-event').count(),27);
+  await page.goto(base+'/#replay');await page.waitForFunction(()=>document.getElementById('replaySeek').max==='100'&&!document.getElementById('replayStage').hidden);assert.ok(await page.locator('.replay-event').count()>100);
   await page.locator('#showReplayMovie').click();await page.waitForFunction(()=>{const v=document.getElementById('replayVideo');return v.readyState>=1&&Number.isFinite(v.duration);});assert.ok(await page.locator('#replayVideo').evaluate(v=>v.duration>29));
   await page.locator('#servicesBtn').click();await page.waitForSelector('#servicesDialog:visible');
   for(const t of ['A','B','C','D']){assert.equal(await page.locator('#jevEndpoint'+t).inputValue(),'http://127.0.0.1:8108');await page.locator('#jevEndpoint'+t).fill(endpoint+'/'+t);await page.locator('#jevKey'+t).fill('browser-team-'+t);}
